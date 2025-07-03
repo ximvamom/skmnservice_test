@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV 자동완성 검색</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            background: transparent;
+            position: relative;
+            z-index: 2;
+        }
+
+        #searchInput:focus {
+            border-color: #4CAF50;
+        }
+
+        .autocomplete-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 16px;
+            color: #999;
+            pointer-events: none;
+            z-index: 1;
+            background: white;
+        }
+
+        .autocomplete-hint {
+            color: #ccc;
+        }
+
+        .results-container {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .results-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .results-list {
+            list-style: none;
+        }
+
+        .results-list li {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 3px solid #4CAF50;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .no-results {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>이름 검색 시스템</h1>
+        
+        <div class="info">
+            💡 이름을 입력하면 자동완성과 관련 결과를 확인할 수 있습니다.
+        </div>
+
+        <div class="search-container">
+            <div id="autocompleteOverlay" class="autocomplete-overlay"></div>
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="이름을 입력하세요..."
+            >
+        </div>
+
+        <div class="results-container">
+            <div class="results-title">검색 결과:</div>
+            <ul id="resultsList" class="results-list">
+                <li class="no-results">검색어를 입력해주세요</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+    let names = [];
+
+    async function loadCSVNames() {
+        try {
+            const res = await fetch('data/names.csv');
+            const text = await res.text();
+            names = text.split(',').map(name => name.trim());
+        } catch (err) {
+            console.error('CSV 파일 로드 실패:', err);
+            alert('이름 데이터를 불러올 수 없습니다.');
+        }
+    }
+
+    function nameListQuery1(nameList, query) {
+        if (!query.trim()) return [];
+        return nameList.filter(name =>
+            name.toLowerCase().includes(query.toLowerCase())
+        );
+    }
+
+    function nameListQuery2(nameList, query) {
+        if (!query.trim()) return null;
+        const match = nameList.find(name =>
+            name.toLowerCase().startsWith(query.toLowerCase())
+        );
+        return match || null;
+    }
+
+    function updateResults(query) {
+        const rll = document.getElementById('resultsList');
+        rll.innerHTML = '';
+
+        const filteredNames = nameListQuery1(names, query);
+
+        if (filteredNames.length === 0) {
+            const noResult = document.createElement('li');
+            noResult.className = 'no-results';
+            noResult.textContent = query.trim()
+                ? '검색 결과가 없습니다'
+                : '검색어를 입력해주세요';
+            rll.appendChild(noResult);
+        } else {
+            filteredNames.forEach(name => {
+                const li = document.createElement('li');
+                li.textContent = name;
+                rll.appendChild(li);
+            });
+        }
+
+        const suggestion = nameListQuery2(names, query);
+        const overlay = document.getElementById('autocompleteOverlay');
+        overlay.innerHTML = '';
+
+        if (suggestion && query.length > 0) {
+            const matchPart = suggestion.slice(query.length);
+            const spanQuery = document.createElement('span');
+            spanQuery.style.color = 'transparent';
+            spanQuery.textContent = query;
+
+            const spanHint = document.createElement('span');
+            spanHint.className = 'autocomplete-hint';
+            spanHint.textContent = matchPart;
+
+            overlay.appendChild(spanQuery);
+            overlay.appendChild(spanHint);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadCSVNames();
+
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('input', e => {
+            updateResults(e.target.value);
+        });
+
+        updateResults('');
+    });
+</script>
+</body>
+</html>
