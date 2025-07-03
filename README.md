@@ -1,1 +1,0 @@
-# skmnservice_test
